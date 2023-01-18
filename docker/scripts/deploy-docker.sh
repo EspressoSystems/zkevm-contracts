@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+set -e
+set -x
 sudo rm -rf docker/gethData/geth_data
 DEV_PERIOD=1 docker-compose -f docker/docker-compose.geth.yml up -d geth
 sleep 5
