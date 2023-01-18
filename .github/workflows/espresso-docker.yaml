@@ -5,7 +5,7 @@ name: Espresso Build-Docker image
 
 on:
   push:
-    branches: [main, ci]
+    branches: [main, ci, hotshot-integration]
     workflow_dispatch:
 jobs:
   build:
