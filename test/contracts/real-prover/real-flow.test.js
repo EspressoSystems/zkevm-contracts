@@ -32,14 +32,19 @@ describe('Real flow test', () => {
     const genesisRoot = inputJson.oldStateRoot;
 
     const networkIDMainnet = 0;
-    const allowForcebatches = true;
+
     const urlSequencer = 'http://zkevm-json-rpc:8123';
     const { chainID } = inputJson;
     const networkName = 'zkevm';
+    const version = '0.0.1';
+    const forkID = 0;
     const pendingStateTimeoutDefault = 10;
     const trustedAggregatorTimeoutDefault = 10;
+    let firstDeployment = true;
 
     beforeEach('Deploy contract', async () => {
+        upgrades.silenceWarnings();
+
         // load signers
         [deployer, trustedAggregator, admin] = await ethers.getSigners();
 
@@ -68,48 +73,68 @@ describe('Real flow test', () => {
         );
         await maticTokenContract.deployed();
 
+        /*
+         * deploy global exit root manager
+         * In order to not have trouble with nonce deploy first proxy admin
+         */
+        await upgrades.deployProxyAdmin();
+        if ((await upgrades.admin.getInstance()).address !== '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0') {
+            firstDeployment = false;
+        }
+
+        const nonceProxyBridge = Number((await ethers.provider.getTransactionCount(deployer.address))) + (firstDeployment ? 3 : 2);
+        const nonceProxyZkevm = nonceProxyBridge + 2; // Always have to redeploy impl since the polygonZkEVMGlobalExitRoot address changes
+
+        const precalculateBridgeAddress = ethers.utils.getContractAddress({ from: deployer.address, nonce: nonceProxyBridge });
+        const precalculateZkevmAddress = ethers.utils.getContractAddress({ from: deployer.address, nonce: nonceProxyZkevm });
+        firstDeployment = false;
+
+        const PolygonZkEVMGlobalExitRootFactory = await ethers.getContractFactory('PolygonZkEVMGlobalExitRootMock');
+        polygonZkEVMGlobalExitRoot = await upgrades.deployProxy(PolygonZkEVMGlobalExitRootFactory, [], {
+            initializer: false,
+            constructorArgs: [precalculateZkevmAddress, precalculateBridgeAddress],
+            unsafeAllow: ['constructor', 'state-variable-immutable'],
+        });
+
         // deploy PolygonZkEVMBridge
         const polygonZkEVMBridgeFactory = await ethers.getContractFactory('PolygonZkEVMBridge');
         polygonZkEVMBridgeContract = await upgrades.deployProxy(polygonZkEVMBridgeFactory, [], { initializer: false });
 
         // deploy PolygonZkEVMMock
         const PolygonZkEVMFactory = await ethers.getContractFactory('PolygonZkEVMMock');
-        polygonZkEVMContract = await upgrades.deployProxy(PolygonZkEVMFactory, [], { initializer: false });
+        polygonZkEVMContract = await upgrades.deployProxy(PolygonZkEVMFactory, [], {
+            initializer: false,
+            constructorArgs: [
+                polygonZkEVMGlobalExitRoot.address,
+                maticTokenContract.address,
+                verifierContract.address,
+                polygonZkEVMBridgeContract.address,
+                chainID,
+                0,
+            ],
+            unsafeAllow: ['constructor', 'state-variable-immutable'],
+        });
 
-        // deploy global exit root manager
-        const PolygonZkEVMGlobalExitRootFactory = await ethers.getContractFactory('PolygonZkEVMGlobalExitRootMock');
+        expect(precalculateBridgeAddress).to.be.equal(polygonZkEVMBridgeContract.address);
+        expect(precalculateZkevmAddress).to.be.equal(polygonZkEVMContract.address);
 
-        polygonZkEVMGlobalExitRoot = await PolygonZkEVMGlobalExitRootFactory.deploy(
-            polygonZkEVMContract.address,
-            polygonZkEVMBridgeContract.address,
-        );
-        await polygonZkEVMBridgeContract.initialize(
-            networkIDMainnet,
-            polygonZkEVMGlobalExitRoot.address,
-            polygonZkEVMContract.address,
-        );
-
+        await polygonZkEVMBridgeContract.initialize(networkIDMainnet, polygonZkEVMGlobalExitRoot.address, polygonZkEVMContract.address);
         await polygonZkEVMContract.initialize(
-            polygonZkEVMGlobalExitRoot.address,
-            maticTokenContract.address,
-            verifierContract.address,
-            polygonZkEVMBridgeContract.address,
             {
                 admin: admin.address,
-                chainID,
                 trustedSequencer: trustedSequencer.address,
                 pendingStateTimeout: pendingStateTimeoutDefault,
-                forceBatchAllowed: allowForcebatches,
                 trustedAggregator: trustedAggregator.address,
                 trustedAggregatorTimeout: trustedAggregatorTimeoutDefault,
             },
             genesisRoot,
             urlSequencer,
             networkName,
+            version,
         );
 
         // fund sequencer address with Matic tokens
-        await maticTokenContract.transfer(trustedSequencer.address, ethers.utils.parseEther('100'));
+        await maticTokenContract.transfer(trustedSequencer.address, ethers.utils.parseEther('1000'));
     });
 
     it('Test real prover', async () => {
@@ -172,7 +197,7 @@ describe('Real flow test', () => {
             }
 
             // Sequence Batches
-            await expect(polygonZkEVMContract.connect(trustedSequencer).sequenceBatches([currentSequence]))
+            await expect(polygonZkEVMContract.connect(trustedSequencer).sequenceBatches([currentSequence], trustedSequencer.address))
                 .to.emit(polygonZkEVMContract, 'SequenceBatches')
                 .withArgs(Number(lastBatchSequenced) + 1);
         }
@@ -207,6 +232,7 @@ describe('Real flow test', () => {
             inputJson.newNumBatch,
             inputJson.chainID,
             inputJson.aggregatorAddress,
+            forkID,
         );
 
         expect(circuitInputStarkJS).to.be.eq(Scalar.e(input[0]));
@@ -218,8 +244,21 @@ describe('Real flow test', () => {
         const { newNumBatch } = inputJson;
         const pendingStateNum = 0;
         // Verify batch
+
         await expect(
-            polygonZkEVMContract.connect(aggregator).trustedVerifyBatches(
+            polygonZkEVMContract.connect(aggregator).verifyBatchesTrustedAggregator(
+                pendingStateNum,
+                oldNumBatch,
+                newNumBatch,
+                newLocalExitRoot,
+                newStateRoot,
+                [0, 0],
+                proofB,
+                proofC,
+            ),
+        ).to.be.revertedWith('InvalidProof');
+        await expect(
+            polygonZkEVMContract.connect(aggregator).verifyBatchesTrustedAggregator(
                 pendingStateNum,
                 oldNumBatch,
                 newNumBatch,
@@ -229,7 +268,7 @@ describe('Real flow test', () => {
                 proofB,
                 proofC,
             ),
-        ).to.emit(polygonZkEVMContract, 'TrustedVerifyBatches')
+        ).to.emit(polygonZkEVMContract, 'VerifyBatchesTrustedAggregator')
             .withArgs(newNumBatch, newStateRoot, aggregator.address);
     });
 });
