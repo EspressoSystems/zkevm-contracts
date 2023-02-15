@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.15;
+pragma solidity 0.8.17;
 import "../PolygonZkEVMBridge.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
@@ -16,7 +16,7 @@ contract PolygonZkEVMBridgeMock is PolygonZkEVMBridge, OwnableUpgradeable {
      */
     function initialize(
         uint32 _networkID,
-        IPolygonZkEVMGlobalExitRoot _globalExitRootManager,
+        IBasePolygonZkEVMGlobalExitRoot _globalExitRootManager,
         address _polygonZkEVMaddress
     ) public override initializer {
         networkID = _networkID;
