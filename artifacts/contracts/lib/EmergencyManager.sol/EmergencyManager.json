@@ -1,0 +1,36 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "EmergencyManager",
+  "sourceName": "contracts/lib/EmergencyManager.sol",
+  "abi": [
+    {
+      "anonymous": false,
+      "inputs": [],
+      "name": "EmergencyStateActivated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [],
+      "name": "EmergencyStateDeactivated",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "isEmergencyState",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x6080604052348015600f57600080fd5b5060838061001e6000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c806315064c9614602d575b600080fd5b60005460399060ff1681565b604051901515815260200160405180910390f3fea2646970667358221220a5a13106932e988d5354fa21c820a246be132a65b8d12e913de8008bbfd6083764736f6c634300080f0033",
+  "deployedBytecode": "0x6080604052348015600f57600080fd5b506004361060285760003560e01c806315064c9614602d575b600080fd5b60005460399060ff1681565b604051901515815260200160405180910390f3fea2646970667358221220a5a13106932e988d5354fa21c820a246be132a65b8d12e913de8008bbfd6083764736f6c634300080f0033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}
