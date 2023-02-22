@@ -19,7 +19,7 @@ module.exports = {
   solidity: {
     compilers: [
       {
-        version: "0.8.15",
+        version: "0.8.17",
         settings: {
           optimizer: {
             enabled: true,
@@ -104,6 +104,7 @@ module.exports = {
     },
     hardhat: {
       initialDate: '0',
+      allowUnlimitedContractSize: true,
       accounts: {
         mnemonic: process.env.MNEMONIC || DEFAULT_MNEMONIC,
         path: "m/44'/60'/0'/0",
@@ -113,9 +114,9 @@ module.exports = {
     }
   },
   gasReporter: {
-    currency: 'USD',
-    coinmarketcap: process.env.COINMARKETCAP_KEY,
     enabled: !!process.env.REPORT_GAS,
+    outputFile: process.env.REPORT_GAS_FILE ? "./gas_report.md" : null,
+    noColors: process.env.REPORT_GAS_FILE ? true : false
   },
   etherscan: {
     apiKey: `${process.env.ETHERSCAN_API_KEY}`,

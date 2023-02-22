@@ -5,6 +5,11 @@
   "abi": [
     {
       "inputs": [],
+      "name": "OnlyAllowedContracts",
+      "type": "error"
+    },
+    {
+      "inputs": [],
       "name": "getLastGlobalExitRoot",
       "outputs": [
         {
