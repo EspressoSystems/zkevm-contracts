@@ -6,7 +6,10 @@ name: Espresso Build-Docker image
 on:
   push:
     branches: [main, ci, hotshot-integration]
-    workflow_dispatch:
+    tags:
+      - 'v*'
+  pull_request:
+  workflow_dispatch:
 jobs:
   build:
     runs-on: ubuntu-latest
