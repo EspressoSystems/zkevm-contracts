@@ -435,7 +435,7 @@ contract PolygonZkEVM is
     }
 
     /////////////////////////////////////
-    // Sequence/Verify batches functions
+    // Batch verification functions
     ////////////////////////////////////
 
     /**
@@ -570,6 +570,62 @@ contract PolygonZkEVM is
     }
 
     /**
+     * @notice Allows an aggregator to verify multiple batches (using HotShot)
+     * @param pendingStateNum Init pending state, 0 if consolidated state is used
+     * @param initNumBatch Batch which the aggregator starts the verification
+     * @param finalNewBatch Last batch aggregator intends to verify
+     * @param newLocalExitRoot  New local exit root once the batch is processed
+     * @param newStateRoot New State root once the batch is processed
+     * @param oldAccInputHash
+     * @param newAccInputHash
+     * @param proofA zk-snark input
+     * @param proofB zk-snark input
+     * @param proofC zk-snark input
+     */
+     function verifyBatchesTrustedAggregator2(
+        uint64 pendingStateNum,
+        uint64 initNumBatch,
+        uint64 finalNewBatch,
+        bytes32 newLocalExitRoot,
+        bytes32 newStateRoot,
+        bytes32 oldAccInputHash,
+        bytes32 newAccInputHash,
+        uint256[2] calldata proofA,
+        uint256[2][2] calldata proofB,
+        uint256[2] calldata proofC
+    ) external onlyTrustedAggregator {
+        _verifyAndRewardBatches2(
+            pendingStateNum,
+            initNumBatch,
+            finalNewBatch,
+            newLocalExitRoot,
+            newStateRoot,
+            proofA,
+            proofB,
+            proofC
+        );
+
+        // Consolidate state
+        lastVerifiedBatch = finalNewBatch;
+        batchNumToStateRoot[finalNewBatch] = newStateRoot;
+
+        // Clean pending state if any
+        if (lastPendingState > 0) {
+            lastPendingState = 0;
+            lastPendingStateConsolidated = 0;
+        }
+
+        // Interact with globalExitRootManager
+        globalExitRootManager.updateExitRoot(newLocalExitRoot);
+
+        emit VerifyBatchesTrustedAggregator(
+            finalNewBatch,
+            newStateRoot,
+            msg.sender
+        );
+    }
+
+    /**
      * @notice Verify and reward batches internal function
      * @param pendingStateNum Init pending state, 0 if consolidated state is used
      * @param initNumBatch Batch which the aggregator starts the verification
@@ -640,6 +696,111 @@ contract PolygonZkEVM is
             oldStateRoot,
             newStateRoot
         );
+
+        // Calulate the snark input
+        uint256 inputSnark = uint256(sha256(snarkHashBytes)) % _RFIELD;
+
+        // Verify proof
+        if (!rollupVerifier.verifyProof(proofA, proofB, proofC, [inputSnark])) {
+            revert InvalidProof();
+        }
+
+        // Get MATIC reward
+        matic.safeTransfer(
+            msg.sender,
+            calculateRewardPerBatch() *
+                (finalNewBatch - currentLastVerifiedBatch)
+        );
+    }
+
+    /**
+     * @notice Verify and reward batches internal function
+     * @param pendingStateNum Init pending state, 0 if consolidated state is used
+     * @param initNumBatch Batch which the aggregator starts the verification
+     * @param finalNewBatch Last batch aggregator intends to verify
+     * @param newLocalExitRoot  New local exit root once the batch is processed
+     * @param newStateRoot New State root once the batch is processed
+     * @param oldAccInputHash
+     * @param newAccInputHash
+     * @param proofA zk-snark input
+     * @param proofB zk-snark input
+     * @param proofC zk-snark input
+     */
+     function _verifyAndRewardBatches2(
+        uint64 pendingStateNum,
+        uint64 initNumBatch,
+        uint64 finalNewBatch,
+        bytes32 newLocalExitRoot,
+        bytes32 newStateRoot,
+        bytes32 oldAccInputHash,
+        bytes32 newAccInputHash,
+        uint256[2] calldata proofA,
+        uint256[2][2] calldata proofB,
+        uint256[2] calldata proofC
+    ) internal {
+        bytes32 oldStateRoot;
+        uint64 currentLastVerifiedBatch = getLastVerifiedBatch();
+
+        // Use pending state if specified, otherwise use consolidated state
+        if (pendingStateNum != 0) {
+            // Check that pending state exist
+            // Already consolidated pending states can be used aswell
+            if (pendingStateNum > lastPendingState) {
+                revert PendingStateDoesNotExist();
+            }
+
+            // Check choosen pending state
+            PendingState storage currentPendingState = pendingStateTransitions[
+                pendingStateNum
+            ];
+
+            // Get oldStateRoot from pending batch
+            oldStateRoot = currentPendingState.stateRoot;
+
+            // Check initNumBatch matches the pending state
+            if (initNumBatch != currentPendingState.lastVerifiedBatch) {
+                revert InitNumBatchDoesNotMatchPendingState();
+            }
+        } else {
+            // Use consolidated state
+            oldStateRoot = batchNumToStateRoot[initNumBatch];
+
+            if (oldStateRoot == bytes32(0)) {
+                revert OldStateRootDoesNotExist();
+            }
+
+            // Check initNumBatch is inside the range, sanity check
+            if (initNumBatch > currentLastVerifiedBatch) {
+                revert InitNumBatchAboveLastVerifiedBatch();
+            }
+        }
+
+        // Check final batch
+        if (finalNewBatch <= currentLastVerifiedBatch) {
+            revert FinalNumBatchBelowLastVerifiedBatch();
+        }
+
+        // Copied from getInputSnarkBytes
+        if (initNumBatch != 0 && oldAccInputHash == bytes32(0)) {
+            revert OldAccInputHashDoesNotExist();
+        }
+
+        if (newAccInputHash == bytes32(0)) {
+            revert NewAccInputHashDoesNotExist();
+        }
+
+        bytes memory snarkHashBytes = abi.encodePacked(
+                msg.sender,
+                oldStateRoot,
+                oldAccInputHash,
+                initNumBatch,
+                chainID,
+                forkID,
+                newStateRoot,
+                newAccInputHash,
+                newLocalExitRoot,
+                finalNewBatch
+            );
 
         // Calulate the snark input
         uint256 inputSnark = uint256(sha256(snarkHashBytes)) % _RFIELD;
