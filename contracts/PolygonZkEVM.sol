@@ -445,9 +445,12 @@ contract PolygonZkEVM is
      * @param finalNewBatch Last batch aggregator intends to verify
      * @param newLocalExitRoot  New local exit root once the batch is processed
      * @param newStateRoot New State root once the batch is processed
+     * @param oldAccInputHash TODO
+     * @param newAccInputHash TODO
      * @param proofA zk-snark input
      * @param proofB zk-snark input
      * @param proofC zk-snark input
+     * @param commProof (placeholder for proof that accInputHash matches HS commitment)
      */
     function verifyBatches(
         uint64 pendingStateNum,
@@ -455,9 +458,12 @@ contract PolygonZkEVM is
         uint64 finalNewBatch,
         bytes32 newLocalExitRoot,
         bytes32 newStateRoot,
+        bytes32 oldAccInputHash,
+        bytes32 newAccInputHash,
         uint256[2] calldata proofA,
         uint256[2][2] calldata proofB,
         uint256[2] calldata proofC
+        bytes calldata commProof
     ) external ifNotEmergencyState {
         // Check if the trusted aggregator timeout expired,
         // Note that the sequencedBatches struct must exists for this finalNewBatch, if not newAccInputHash will be 0
@@ -480,9 +486,12 @@ contract PolygonZkEVM is
             finalNewBatch,
             newLocalExitRoot,
             newStateRoot,
+            oldAccInputHash,
+            newAccInputHash,
             proofA,
             proofB,
-            proofC
+            proofC,
+            commProof
         );
 
         // Update batch fees
@@ -519,14 +528,14 @@ contract PolygonZkEVM is
     }
 
     /**
-     * @notice Allows an aggregator to verify multiple batches (using HotShot)
+     * @notice Allows an aggregator to verify multiple batches
      * @param pendingStateNum Init pending state, 0 if consolidated state is used
      * @param initNumBatch Batch which the aggregator starts the verification
      * @param finalNewBatch Last batch aggregator intends to verify
      * @param newLocalExitRoot  New local exit root once the batch is processed
      * @param newStateRoot New State root once the batch is processed
-     * @param oldAccInputHash
-     * @param newAccInputHash
+     * @param oldAccInputHash TODO
+     * @param newAccInputHash TODO
      * @param proofA zk-snark input
      * @param proofB zk-snark input
      * @param proofC zk-snark input
