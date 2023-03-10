@@ -104,14 +104,10 @@ contract PolygonZkEVM is
     /**
      * @notice Pack multiple arguments and avoid stack too deep errors
      */
-    struct VerifyBatchPackedParameters {
-        uint64 pendingStateNum;
-        uint64 initNumBatch;
-        uint64 finalNewBatch;
-        bytes32 newLocalExitRoot;
-        bytes32 newStateRoot;
+    struct HotShotParameters {
         bytes32 oldAccInputHash;
         bytes32 newAccInputHash;
+        bytes commProof;
     }
 
     // Modulus zkSNARK
@@ -463,39 +459,52 @@ contract PolygonZkEVM is
      * @param proofA zk-snark input
      * @param proofB zk-snark input
      * @param proofC zk-snark input
-     * @param commProof (placeholder for proof that accInputHash matches HS commitment)
      */
     function verifyBatches(
-        VerifyBatchPackedParameters calldata packed,
+        uint64 pendingStateNum,
+        uint64 initNumBatch,
+        uint64 finalNewBatch,
+        bytes32 newLocalExitRoot,
+        bytes32 newStateRoot,
         uint256[2] calldata proofA,
         uint256[2][2] calldata proofB,
         uint256[2] calldata proofC,
-        bytes calldata commProof
+        HotShotParameters calldata packed
     ) external ifNotEmergencyState {
         // Check if the trusted aggregator timeout expired,
         // Note that the sequencedBatches struct must exists for this finalNewBatch, if not newAccInputHash will be 0
         if (
-            sequencedBatches[packed.finalNewBatch].sequencedTimestamp +
+            sequencedBatches[finalNewBatch].sequencedTimestamp +
                 trustedAggregatorTimeout >
             block.timestamp
         ) {
             revert TrustedAggregatorTimeoutNotExpired();
         }
 
-        if (packed.finalNewBatch - packed.initNumBatch > _MAX_VERIFY_BATCHES) {
+        if (finalNewBatch - initNumBatch > _MAX_VERIFY_BATCHES) {
             revert ExceedMaxVerifyBatches();
         }
 
         // TODO: update these args when we change this function
-        _verifyAndRewardBatches(packed, proofA, proofB, proofC, commProof);
+        _verifyAndRewardBatches(
+            pendingStateNum,
+            initNumBatch,
+            finalNewBatch,
+            newLocalExitRoot,
+            newStateRoot,
+            proofA,
+            proofB,
+            proofC,
+            packed
+        );
 
         // Update batch fees
-        _updateBatchFee(packed.finalNewBatch);
+        _updateBatchFee(finalNewBatch);
 
         if (pendingStateTimeout == 0) {
             // Consolidate state
-            lastVerifiedBatch = packed.finalNewBatch;
-            batchNumToStateRoot[packed.finalNewBatch] = packed.newStateRoot;
+            lastVerifiedBatch = finalNewBatch;
+            batchNumToStateRoot[finalNewBatch] = newStateRoot;
 
             // Clean pending state if any
             if (lastPendingState > 0) {
@@ -504,7 +513,7 @@ contract PolygonZkEVM is
             }
 
             // Interact with globalExitRootManager
-            globalExitRootManager.updateExitRoot(packed.newLocalExitRoot);
+            globalExitRootManager.updateExitRoot(newLocalExitRoot);
         } else {
             // Consolidate pending state if possible
             _tryConsolidatePendingState();
@@ -513,17 +522,13 @@ contract PolygonZkEVM is
             lastPendingState++;
             pendingStateTransitions[lastPendingState] = PendingState({
                 timestamp: uint64(block.timestamp),
-                lastVerifiedBatch: packed.finalNewBatch,
-                exitRoot: packed.newLocalExitRoot,
-                stateRoot: packed.newStateRoot
+                lastVerifiedBatch: finalNewBatch,
+                exitRoot: newLocalExitRoot,
+                stateRoot: newStateRoot
             });
         }
 
-        emit VerifyBatches(
-            packed.finalNewBatch,
-            packed.newStateRoot,
-            msg.sender
-        );
+        emit VerifyBatches(finalNewBatch, newStateRoot, msg.sender);
     }
 
     /**
@@ -553,17 +558,23 @@ contract PolygonZkEVM is
         uint256[2] calldata proofC,
         bytes calldata commProof
     ) external onlyTrustedAggregator {
-        VerifyBatchPackedParameters memory packed = VerifyBatchPackedParameters(
+        HotShotParameters memory packed = HotShotParameters(
+            oldAccInputHash,
+            newAccInputHash,
+            commProof
+        );
+
+        _verifyAndRewardBatches(
             pendingStateNum,
             initNumBatch,
             finalNewBatch,
             newLocalExitRoot,
             newStateRoot,
-            oldAccInputHash,
-            newAccInputHash
+            proofA,
+            proofB,
+            proofC,
+            packed
         );
-
-        _verifyAndRewardBatches(packed, proofA, proofB, proofC, commProof);
 
         // Consolidate state
         lastVerifiedBatch = finalNewBatch;
@@ -591,65 +602,70 @@ contract PolygonZkEVM is
      * @param proofA zk-snark input
      * @param proofB zk-snark input
      * @param proofC zk-snark input
-     * @param commProof (placeholder for proof that accInputHash matches HS commitment)
      */
     function _verifyAndRewardBatches(
-        VerifyBatchPackedParameters memory packed,
+        uint64 pendingStateNum,
+        uint64 initNumBatch,
+        uint64 finalNewBatch,
+        bytes32 newLocalExitRoot,
+        bytes32 newStateRoot,
         uint256[2] calldata proofA,
         uint256[2][2] calldata proofB,
         uint256[2] calldata proofC,
-        bytes calldata commProof
+        HotShotParameters memory packed
     ) internal {
         bytes32 oldStateRoot;
         uint64 currentLastVerifiedBatch = getLastVerifiedBatch();
 
         // Use pending state if specified, otherwise use consolidated state
-        if (packed.pendingStateNum != 0) {
+        if (pendingStateNum != 0) {
             // Check that pending state exist
             // Already consolidated pending states can be used aswell
-            if (packed.pendingStateNum > lastPendingState) {
+            if (pendingStateNum > lastPendingState) {
                 revert PendingStateDoesNotExist();
             }
 
             // Check choosen pending state
             PendingState storage currentPendingState = pendingStateTransitions[
-                packed.pendingStateNum
+                pendingStateNum
             ];
 
             // Get oldStateRoot from pending batch
             oldStateRoot = currentPendingState.stateRoot;
 
             // Check initNumBatch matches the pending state
-            if (packed.initNumBatch != currentPendingState.lastVerifiedBatch) {
+            if (initNumBatch != currentPendingState.lastVerifiedBatch) {
                 revert InitNumBatchDoesNotMatchPendingState();
             }
         } else {
             // Use consolidated state
-            oldStateRoot = batchNumToStateRoot[packed.initNumBatch];
+            oldStateRoot = batchNumToStateRoot[initNumBatch];
 
             if (oldStateRoot == bytes32(0)) {
                 revert OldStateRootDoesNotExist();
             }
 
             // Check initNumBatch is inside the range, sanity check
-            if (packed.initNumBatch > currentLastVerifiedBatch) {
+            if (initNumBatch > currentLastVerifiedBatch) {
                 revert InitNumBatchAboveLastVerifiedBatch();
             }
         }
 
         // Check final batch
-        if (packed.finalNewBatch <= currentLastVerifiedBatch) {
+        if (finalNewBatch <= currentLastVerifiedBatch) {
             revert FinalNumBatchBelowLastVerifiedBatch();
         }
 
         // TODO: Check that these match the accInputHash values
-        uint256 hotshotInitBlockComm = hotShot.commitments(packed.initNumBatch);
-        uint256 hotshotFinalBlockComm = hotShot.commitments(
-            packed.finalNewBatch
-        );
+        uint256 hotshotInitBlockComm = hotShot.commitments(initNumBatch);
+        uint256 hotshotFinalBlockComm = hotShot.commitments(finalNewBatch);
 
         bytes memory snarkHashBytes = _getSnarkInputBytesV2(
             oldStateRoot,
+            initNumBatch,
+            finalNewBatch,
+            newStateRoot,
+            newLocalExitRoot,
             packed
         );
 
@@ -665,26 +681,30 @@ contract PolygonZkEVM is
         matic.safeTransfer(
             msg.sender,
             calculateRewardPerBatch() *
-                (packed.finalNewBatch - currentLastVerifiedBatch)
+                (finalNewBatch - currentLastVerifiedBatch)
         );
     }
 
     function _getSnarkInputBytesV2(
         bytes32 oldStateRoot,
-        VerifyBatchPackedParameters memory packed
+        uint64 initNumBatch,
+        uint64 finalNewBatch,
+        bytes32 newStateRoot,
+        bytes32 newLocalExitRoot,
+        HotShotParameters memory packed
     ) internal view returns (bytes memory) {
         return
             abi.encodePacked(
                 msg.sender,
                 oldStateRoot,
                 packed.oldAccInputHash,
-                packed.initNumBatch,
+                initNumBatch,
                 chainID,
                 forkID,
-                packed.newStateRoot,
+                newStateRoot,
                 packed.newAccInputHash,
-                packed.newLocalExitRoot,
-                packed.finalNewBatch
+                newLocalExitRoot,
+                finalNewBatch
             );
     }
 
