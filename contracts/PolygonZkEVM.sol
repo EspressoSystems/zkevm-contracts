@@ -455,10 +455,15 @@ contract PolygonZkEVM is
 
     /**
      * @notice Allows an aggregator to verify multiple batches
-     * @param packed packed parameters
+     * @param pendingStateNum Init pending state, 0 if consolidated state is used
+     * @param initNumBatch Batch which the aggregator starts the verification
+     * @param finalNewBatch Last batch aggregator intends to verify
+     * @param newLocalExitRoot  New local exit root once the batch is processed
+     * @param newStateRoot New State root once the batch is processed
      * @param proofA zk-snark input
      * @param proofB zk-snark input
      * @param proofC zk-snark input
+     * @param packed Packed HotShot parameters
      */
     function verifyBatches(
         uint64 pendingStateNum,
@@ -598,10 +603,16 @@ contract PolygonZkEVM is
 
     /**
      * @notice Verify and reward batches internal function
+     * @param pendingStateNum Init pending state, 0 if consolidated state is used
+     * @param initNumBatch Batch which the aggregator starts the verification
+     * @param finalNewBatch Last batch aggregator intends to verify
+     * @param newLocalExitRoot  New local exit root once the batch is processed
+     * @param newStateRoot New State root once the batch is processed
      * @param packed packed parameters
      * @param proofA zk-snark input
      * @param proofB zk-snark input
      * @param proofC zk-snark input
+     * @param packed Packed HotShot parameters
      */
     function _verifyAndRewardBatches(
         uint64 pendingStateNum,
