@@ -22,6 +22,7 @@ contract PolygonZkEVMMock is PolygonZkEVM {
         IERC20Upgradeable _matic,
         IVerifierRollup _rollupVerifier,
         IPolygonZkEVMBridge _bridgeAddress,
+        IHotShot _hotShot,
         uint64 _chainID,
         uint64 _forkID
     )
@@ -30,6 +31,7 @@ contract PolygonZkEVMMock is PolygonZkEVM {
             _matic,
             _rollupVerifier,
             _bridgeAddress,
+            _hotShot,
             _chainID,
             _forkID
         )
