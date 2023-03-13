@@ -104,7 +104,7 @@ contract PolygonZkEVM is
     /**
      * @notice Pack multiple arguments and avoid stack too deep errors
      */
-    struct HotShotParameters {
+    struct PackedHotShotParams {
         bytes32 oldAccInputHash;
         bytes32 newAccInputHash;
         bytes commProof;
@@ -608,7 +608,7 @@ contract PolygonZkEVM is
      * @param proofA zk-snark input
      * @param proofB zk-snark input
      * @param proofC zk-snark input
-     * @param packed Packed HotShot parameters
+     * @param packedHotShotParams Packed HotShot parameters
      */
     function verifyBatches(
         uint64 pendingStateNum,
@@ -619,7 +619,7 @@ contract PolygonZkEVM is
         uint256[2] calldata proofA,
         uint256[2][2] calldata proofB,
         uint256[2] calldata proofC,
-        HotShotParameters calldata packed
+        PackedHotShotParams calldata packedHotShotParams
     ) external ifNotEmergencyState {
         // Check if the trusted aggregator timeout expired,
         // Note that the sequencedBatches struct must exists for this finalNewBatch, if not newAccInputHash will be 0
@@ -645,7 +645,7 @@ contract PolygonZkEVM is
             proofA,
             proofB,
             proofC,
-            packed
+            packedHotShotParams
         );
 
         // Update batch fees
@@ -708,7 +708,7 @@ contract PolygonZkEVM is
         uint256[2] calldata proofC,
         bytes calldata commProof
     ) external onlyTrustedAggregator {
-        HotShotParameters memory packed = HotShotParameters(
+        PackedHotShotParams memory packedHotShotParams = PackedHotShotParams(
             oldAccInputHash,
             newAccInputHash,
             commProof
@@ -723,7 +723,7 @@ contract PolygonZkEVM is
             proofA,
             proofB,
             proofC,
-            packed
+            packedHotShotParams
         );
 
         // Consolidate state
@@ -753,11 +753,10 @@ contract PolygonZkEVM is
      * @param finalNewBatch Last batch aggregator intends to verify
      * @param newLocalExitRoot  New local exit root once the batch is processed
      * @param newStateRoot New State root once the batch is processed
-     * @param packed packed parameters
      * @param proofA zk-snark input
      * @param proofB zk-snark input
      * @param proofC zk-snark input
-     * @param packed Packed HotShot parameters
+     * @param packedHotShotParams Packed HotShot parameters
      */
     function _verifyAndRewardBatches(
         uint64 pendingStateNum,
@@ -768,7 +767,7 @@ contract PolygonZkEVM is
         uint256[2] calldata proofA,
         uint256[2][2] calldata proofB,
         uint256[2] calldata proofC,
-        HotShotParameters memory packed
+        PackedHotShotParams memory packedHotShotParams
     ) internal {
         bytes32 oldStateRoot;
         uint64 currentLastVerifiedBatch = getLastVerifiedBatch();
@@ -816,13 +815,13 @@ contract PolygonZkEVM is
         uint256 hotshotInitBlockComm = hotShot.commitments(initNumBatch);
         uint256 hotshotFinalBlockComm = hotShot.commitments(finalNewBatch);
 
-        bytes memory snarkHashBytes = _getSnarkInputBytesV2(
+        bytes memory snarkHashBytes = _getInputInputBytesHotShot(
             oldStateRoot,
             initNumBatch,
             finalNewBatch,
             newStateRoot,
             newLocalExitRoot,
-            packed
+            packedHotShotParams
         );
 
         // Calulate the snark input
@@ -841,24 +840,29 @@ contract PolygonZkEVM is
         );
     }
 
-    function _getSnarkInputBytesV2(
+    /**
+     * @notice This function exists to avoid stack too deep errors at the call
+     *         site by reducing the number of local variables in the call site
+     *         scope.
+     */
+    function _getInputInputBytesHotShot(
         bytes32 oldStateRoot,
         uint64 initNumBatch,
         uint64 finalNewBatch,
         bytes32 newStateRoot,
         bytes32 newLocalExitRoot,
-        HotShotParameters memory packed
+        PackedHotShotParams memory packedHotShotParams
     ) internal view returns (bytes memory) {
         return
             abi.encodePacked(
                 msg.sender,
                 oldStateRoot,
-                packed.oldAccInputHash,
+                packedHotShotParams.oldAccInputHash,
                 initNumBatch,
                 chainID,
                 forkID,
                 newStateRoot,
-                packed.newAccInputHash,
+                packedHotShotParams.newAccInputHash,
                 newLocalExitRoot,
                 finalNewBatch
             );
