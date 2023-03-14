@@ -670,7 +670,7 @@ contract PolygonZkEVM is
         uint256 hotshotInitBlockComm = hotShot.commitments(initNumBatch);
         uint256 hotshotFinalBlockComm = hotShot.commitments(finalNewBatch);
 
-        bytes memory snarkHashBytes = _getInputInputBytesHotShot(
+        bytes memory snarkHashBytes = _getInputSnarkBytesHotShot(
             oldStateRoot,
             initNumBatch,
             finalNewBatch,
@@ -700,7 +700,7 @@ contract PolygonZkEVM is
      *         site by reducing the number of local variables in the call site
      *         scope.
      */
-    function _getInputInputBytesHotShot(
+    function _getInputSnarkBytesHotShot(
         bytes32 oldStateRoot,
         uint64 initNumBatch,
         uint64 finalNewBatch,
