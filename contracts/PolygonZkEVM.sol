@@ -543,12 +543,10 @@ contract PolygonZkEVM is
      * @param finalNewBatch Last batch aggregator intends to verify
      * @param newLocalExitRoot  New local exit root once the batch is processed
      * @param newStateRoot New State root once the batch is processed
-     * @param oldAccInputHash TODO
-     * @param newAccInputHash TODO
      * @param proofA zk-snark input
      * @param proofB zk-snark input
      * @param proofC zk-snark input
-     * @param commProof (placeholder for proof that accInputHash matches HS commitment)
+     * @param packedHotShotParams Packed HotShot parameters
      */
     function verifyBatchesTrustedAggregator(
         uint64 pendingStateNum,
@@ -556,19 +554,11 @@ contract PolygonZkEVM is
         uint64 finalNewBatch,
         bytes32 newLocalExitRoot,
         bytes32 newStateRoot,
-        bytes32 oldAccInputHash,
-        bytes32 newAccInputHash,
         uint256[2] calldata proofA,
         uint256[2][2] calldata proofB,
         uint256[2] calldata proofC,
-        bytes calldata commProof
+        PackedHotShotParams memory packedHotShotParams
     ) external onlyTrustedAggregator {
-        PackedHotShotParams memory packedHotShotParams = PackedHotShotParams(
-            oldAccInputHash,
-            newAccInputHash,
-            commProof
-        );
-
         _verifyAndRewardBatches(
             pendingStateNum,
             initNumBatch,
