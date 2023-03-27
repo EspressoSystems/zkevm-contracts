@@ -103,6 +103,7 @@ module.exports = {
       },
     },
     hardhat: {
+      chainId: 1337,
       initialDate: '0',
       allowUnlimitedContractSize: true,
       accounts: {

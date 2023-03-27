@@ -677,12 +677,12 @@ contract PolygonZkEVM is
             revert InvalidProof();
         }
 
-        // Get MATIC reward
-        matic.safeTransfer(
-            msg.sender,
-            calculateRewardPerBatch() *
-                (finalNewBatch - currentLastVerifiedBatch)
-        );
+        // TODO Get MATIC reward
+        // matic.safeTransfer(
+        //     msg.sender,
+        //     calculateRewardPerBatch() *
+        //         (finalNewBatch - currentLastVerifiedBatch)
+        // );
     }
 
     /**
