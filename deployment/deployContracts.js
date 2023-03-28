@@ -212,6 +212,9 @@ async function main() {
     console.log('trustedSequencerURL:', trustedSequencerURL);
     console.log('networkName:', networkName);
 
+    // TODO: configure real hotshot contract address
+    const hotShotAddress = "0x0000000000000000000000000000000000000000";
+
     const PolygonZkEVMFactory = await ethers.getContractFactory('PolygonZkEVMMock', deployer);
     let polygonZkEVMContract;
     for (let i = 0; i < attemptsDeployProxy; i++) {
@@ -237,6 +240,7 @@ async function main() {
                         maticTokenContract.address,
                         verifierContract.address,
                         polygonZkEVMBridgeContract.address,
+                        hotShotAddress,
                         chainID,
                         forkID,
                     ],
