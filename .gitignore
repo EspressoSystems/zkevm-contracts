@@ -9,7 +9,8 @@ package-lock.json
 coverage
 .coverage_*
 .openzeppelin
-artifacts/
+artifacts/*
+!/artifacts/contracts/
 docs/interfaces
 docs/mocks
 .vscode/launch.json
