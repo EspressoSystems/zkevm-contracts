@@ -82,7 +82,7 @@ jobs:
       - name: test
         run: npm run test
       # Update check run
-      - uses: actions/github-script@v5
+      - uses: actions/github-script@v6
         id: update-check-run
         if: ${{ always() }}
         env:
