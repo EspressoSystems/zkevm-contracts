@@ -48,7 +48,7 @@ jobs:
       # Steps to push multi-platform image, it relies on the previous step:
       #  npm run docker:contracts
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
+        uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
       - name: Build and push
