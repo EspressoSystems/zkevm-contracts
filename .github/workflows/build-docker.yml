@@ -27,7 +27,7 @@ jobs:
           eval "$(ssh-agent -s)"
           ssh-add /tmp/ssh-key
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: setup
         run: |
           eval "$(ssh-agent -s)"
