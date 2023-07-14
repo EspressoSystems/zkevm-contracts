@@ -74,12 +74,6 @@ This docker will contain a geth node with the deployed contracts
 The deployment output can be found in: `docker/deploymentOutput/deploy_output.json`
 To run the docker you can use: `docker run -p 8545:8545 hermez-geth1.3:latest`
 
-## License
-
-### Copyright
-
-Polygon `zkevm-contracts` was developed by Polygon. While we plan to adopt an open source license, we haven’t selected one yet, so all rights are reserved for the time being. Please reach out to us if you have thoughts on licensing.
-
 ## Note
 
 In order to test, the following private keys are being used. This keys are not meant to be used in any production environment:
