@@ -165,7 +165,7 @@ It tries to consolidate the first and the middle pending state in the queue
     uint64 pendingStateNum
   ) external
 ```
-Allows to consolidate any pending state that has already exceed the pendingStateTimeout
+Allows to consolidate any pending state that has already exceeded the pendingStateTimeout
 Can be called by the trusted aggregator, which can consolidate any state without the timeout restrictions
 
 
@@ -180,7 +180,7 @@ Can be called by the trusted aggregator, which can consolidate any state without
     uint64 pendingStateNum
   ) internal
 ```
-Internal function to consolidate any pending state that has already exceed the pendingStateTimeout
+Internal function to consolidate any pending state that has already exceeded the pendingStateTimeout
 
 
 #### Parameters:
@@ -194,7 +194,7 @@ Internal function to consolidate any pending state that has already exceed the p
     uint64 newLastVerifiedBatch
   ) internal
 ```
-Function to update the batch fee based on the new verfied batches
+Function to update the batch fee based on the new verified batches
 The batch fee will not be updated when the trusted aggregator verify batches
 
 
@@ -346,7 +346,7 @@ the trustedAggregatorTimeout should be zero or very close to zero
   ) external
 ```
 Starts the admin role transfer
-This is a two step process, the pending admin must accepted to finalize the process
+This is a two step process, the pending admin must accept to finalize the process
 
 
 #### Parameters:
@@ -378,7 +378,7 @@ Allow the current pending admin to accept the admin role
   ) external
 ```
 Allows the trusted aggregator to override the pending state
-if its possible to prove a different state root given the same batches
+if it's possible to prove a different state root given the same batches
 
 
 #### Parameters:
@@ -408,7 +408,7 @@ if its possible to prove a different state root given the same batches
     uint256[2] proofC
   ) external
 ```
-Allows to halt the PolygonZkEVM if its possible to prove a different state root given the same batches
+Allows to halt the PolygonZkEVM if it's possible to prove a different state root given the same batches
 
 
 #### Parameters:
@@ -438,7 +438,7 @@ Allows to halt the PolygonZkEVM if its possible to prove a different state root 
     uint256[2] proofC
   ) internal
 ```
-Internal function that prove a different state root given the same batches to verify
+Internal function that proves a different state root given the same batches to verify
 
 
 #### Parameters:
@@ -467,7 +467,7 @@ If not called by the owner must be provided a batcnNum that does not have been a
 #### Parameters:
 | Name | Type | Description                                                          |
 | :--- | :--- | :------------------------------------------------------------------- |
-|`sequencedBatchNum` | uint64 | Sequenced batch number that has not been aggreagated in _HALT_AGGREGATION_TIMEOUT
+|`sequencedBatchNum` | uint64 | Sequenced batch number that has not been aggregated in _HALT_AGGREGATION_TIMEOUT
 
 ### deactivateEmergencyState
 ```solidity
@@ -511,7 +511,7 @@ Get the last verified batch
   ) public returns (bool)
 ```
 Returns a boolean that indicates if the pendingStateNum is or not consolidable
-Note that his function do not check if the pending state currently exist, or if it's consolidated already
+Note that his function does not check if the pending state currently exist, or if it's consolidated already
 
 
 
@@ -540,7 +540,7 @@ Function to calculate the input snark bytes
 #### Parameters:
 | Name | Type | Description                                                          |
 | :--- | :--- | :------------------------------------------------------------------- |
-|`initNumBatch` | uint64 | Batch which the aggregator starts teh verification
+|`initNumBatch` | uint64 | Batch which the aggregator starts the verification
 |`finalNewBatch` | uint64 | Last batch aggregator intends to verify
 |`newLocalExitRoot` | bytes32 | New local exit root once the batch is processed
 |`oldStateRoot` | bytes32 | State root before batch is processed
@@ -577,7 +577,7 @@ Emitted when forced batches are sequenced by not the trusted sequencer
   )
 ```
 
-Emitted when a aggregator verifies batches
+Emitted when an aggregator verifies batches
 
 ### VerifyBatchesTrustedAggregator
 ```solidity
@@ -689,6 +689,6 @@ Emitted when the trusted aggregator overrides pending state
   )
 ```
 
-Emitted everytime the forkID is updated, this includes the first initialization of the contract
+Emitted every time the forkID is updated, this includes the first initialization of the contract
 This event is intended to be emitted for every upgrade of the contract with relevant changes for the nodes
 
