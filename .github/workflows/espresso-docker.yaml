@@ -51,7 +51,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate docker metadata
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         id: geth-zkevm-contracts
         with:
           images: ghcr.io/${{ github.repository_owner }}/geth-zkevm-contracts
